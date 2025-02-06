@@ -16,17 +16,20 @@ mainLogger.info(f'Using parameters: {args}')
 
 model_builder = GeneralBuilder(args.method)
 
-mainLogger.info("Detector is started.")
 
 try:
     detector = model_builder.build()
-    results = detector.predict(args.input_video, save=False)
+    mainLogger.info("Detector is started.")
+    results = detector.predict(args.input_image, save=False)
     mainLogger.info("results =", results)
-    '''
+    
     with open('models/coco.yaml') as fh:
         class_names = yaml.load(fh, Loader=yaml.FullLoader)
 
-    
+    print(results)
+    print(f"")
+    print(f"")
+    '''
     frame_id = 0
     for r in results:
         frame_id += 1

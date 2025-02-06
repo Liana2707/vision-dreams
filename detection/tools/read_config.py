@@ -52,7 +52,7 @@ def read_input():
         with open(args.file, 'r') as file:
             df = json.load(file)
         args = pd.Series(df)
-    elif args.input_video:
+    elif args.input_image:
         args = arg_parser()
     elif os.environ.get('INPUT_IMAGE') is not None:
         args = environ_get()
