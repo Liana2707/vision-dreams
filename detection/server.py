@@ -89,6 +89,21 @@ async def unpack_train_dataset(input_uuid: UUID = Query(...)):
             return response.json()
         else:
             return {"Ошибка:": response.status_code} 
+        
+# Сохранение модели в папку /models
+@app.post("/save_model", response_model=Response)
+async def save_model(input_uuid: UUID = Query(...)):
+    created_models[str(input_uuid)].save(settings.model_dir) 
+    return Response(message=f"Модель {created_models[str(input_uuid)].model_name} скачана.", uuid=f"{input_uuid}")
+
+# Загрузка модели по имени
+@app.post('/load_model', response_model=Response)
+async def load_model(input_uuid: UUID = Query(...)):
+    created_models[str(input_uuid)].save(settings.model_dir) 
+    return Response(message=f"Модель {created_models[str(input_uuid)].model_name} скачана.", uuid=f"{input_uuid}")
+
+
+
 
 
 

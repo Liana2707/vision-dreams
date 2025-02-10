@@ -4,7 +4,7 @@ from builders.general_builder import GeneralBuilder
 from models_config import models_config
 import send_task
 from tools import read_config, utils
-
+from server import created_models
 import yaml
 
 # ----- read parameters -----
@@ -14,7 +14,7 @@ args = read_config.read_input()
 mainLogger = utils.createLogger('API',f'{args.output}/det_logs.log')
 mainLogger.info(f'Using parameters: {args}')
 
-model_builder = GeneralBuilder(args.method)
+
 
 
 try:

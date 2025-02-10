@@ -33,3 +33,6 @@ class YOLODetector(BaseDetector):
             "score": scores,
             "bbox": bboxes,
         }
+    
+    def save(self, dir):
+        self.model.save(f"{dir}/{self.model_name}.pt")

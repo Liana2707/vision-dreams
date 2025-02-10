@@ -13,6 +13,7 @@ def environ_get():
     args = pd.Series()
     args['input_image'] = os.environ.get('INPUT_IMAGE')
     args['method'] = os.environ.get('METHOD', 'yolo')
+    args['mode'] = os.environ.get('MODE', 'predict')
     args['output'] = os.getenv("OUTPUT", '.')
 
     args['rabbit'] = bool(os.environ.get('RABBIT', 'True').lower() in ('true', '1', 't'))
@@ -34,6 +35,10 @@ def arg_parser():
     parser.add_argument('-m', '--method', default='yolo', metavar='Method', type=str,
                         help='One of available tracking algorithms: yolo',
                         choices=['yolo', 'ssdlite', 'yolos'])
+    parser.add_argument('-md', '--mode', default='train', metavar='Mode', type=str,
+                        help='One of available modes: save, train, predict, eval',
+                        choices=['save', 'train', 'predict', 'eval'])
+    
     parser.add_argument('-o', '--output', default='.', metavar='Output',
                         type=str, help='Path to output data')
     parser.add_argument('-sj', '--save_json', action='store_true', help='Save in json format')

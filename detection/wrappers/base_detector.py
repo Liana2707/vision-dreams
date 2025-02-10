@@ -17,3 +17,7 @@ class BaseDetector(ABC):
     @abstractmethod
     def predict(self, image_path, **params):
         pass
+
+    @abstractmethod
+    def save(self, save_dir):
+        pass
