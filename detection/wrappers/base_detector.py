@@ -21,3 +21,7 @@ class BaseDetector(ABC):
     @abstractmethod
     def save(self, save_dir):
         pass
+
+    @abstractmethod
+    def load(self):
+        pass

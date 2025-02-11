@@ -13,6 +13,13 @@ class YOLODetector(BaseDetector):
             raise FileNotFoundError(f"Модель не найдена: {model_path}")
         self.model = YOLO(model_path)  
 
+    def load(self):
+        model_path = f"models/{self.model_name}.pt"
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Модель не найдена: {model_path}")
+        self.model = YOLO(model_path)  
+
+
     def train(self, data_path, epochs=10):
         pass
 
@@ -28,11 +35,13 @@ class YOLODetector(BaseDetector):
         classes = torch.cat(classes) 
         scores = torch.cat(scores)
         bboxes = torch.cat(bboxes)
+
         return {
             "class":  classes,
             "score": scores,
             "bbox": bboxes,
         }
+    
     
     def save(self, dir):
         self.model.save(f"{dir}/{self.model_name}.pt")

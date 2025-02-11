@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import cv2
@@ -14,6 +15,9 @@ class SSDLiteDetector(BaseDetector):
         super().__init__(model_name)
         self.weights = SSDLite320_MobileNet_V3_Large_Weights.DEFAULT
         self.model = ssdlite320_mobilenet_v3_large(weights=self.weights)
+    
+    def load(self):
+        pass
       
     def train(self):
         pass
@@ -53,7 +57,14 @@ class SSDLiteDetector(BaseDetector):
 
         results = {
             "class": filtered_labels,
-            "conf": filtered_scores,
-            "xywhn": filtered_boxes_normalized 
+            "score": filtered_scores,
+            "bbox": filtered_boxes_normalized 
         }
         return results
+    
+    def save(self, dir):
+        model_path = os.path.join(dir, f"{self.model_name}.pt") 
+        torch.save(self.model.state_dict(), model_path)
+
+    
+        

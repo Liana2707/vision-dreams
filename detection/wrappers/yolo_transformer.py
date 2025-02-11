@@ -1,3 +1,4 @@
+import os
 from PIL import Image
 import torch
 from transformers import AutoFeatureExtractor
@@ -11,6 +12,9 @@ class YOLOTransformerDetector(BaseDetector):
         super().__init__(model_name)
         self.feature_extractor = AutoFeatureExtractor.from_pretrained("hustvl/yolos-small")
         self.model = YolosForObjectDetection.from_pretrained("hustvl/yolos-small")
+
+    def load(self):
+        pass
 
     def train(self, data_path, epochs=10):
         pass
@@ -41,7 +45,7 @@ class YOLOTransformerDetector(BaseDetector):
         return {
             "class":  labels,
             "score": scores,
-            "xywhn": boxes_xywhn,
+            "bbox": boxes_xywhn,
         }
 
     def xyxy_to_xywh(self, boxes):
@@ -59,3 +63,7 @@ class YOLOTransformerDetector(BaseDetector):
         boxes[:, 2] /= width  # width
         boxes[:, 3] /= height # height
         return boxes
+    
+    def save(self, dir):
+        model_path = os.path.join(dir, f"{self.model_name}.pth")
+        torch.save(self.model.state_dict(), model_path)

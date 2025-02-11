@@ -6,6 +6,7 @@ import send_task
 from tools import read_config, utils
 from server import created_models
 import yaml
+from server import created_models
 
 # ----- read parameters -----
 args = read_config.read_input()
@@ -14,41 +15,33 @@ args = read_config.read_input()
 mainLogger = utils.createLogger('API',f'{args.output}/det_logs.log')
 mainLogger.info(f'Using parameters: {args}')
 
-
-
-
 try:
-    detector = model_builder.build()
+    detector = created_models[args.method]
     mainLogger.info("Detector is started.")
-    results = detector.predict(args.input_image, save=False)
+    results = detector.predict(args.input_image, save=True)
     mainLogger.info("results =", results)
     
     with open('models/coco.yaml') as fh:
         class_names = yaml.load(fh, Loader=yaml.FullLoader)
 
-    print(results)
-    print(f"")
-    print(f"")
-    '''
-    frame_id = 0
-    for r in results:
-        frame_id += 1
-        cls = r.boxes.cls
-        xywhn = r.boxes.xywhn
-        conf = r.boxes.conf
-        curr_det = []
-        for i in range(len(cls)):
-            curr_det.append({
-            "class":  class_names['names'][int(cls[i])],
-            "score": float(conf[i]),
-            "bbox": xywhn[i].tolist(),
-            })
-        curr_frame = {"frame_id": frame_id, "detections": curr_det}
+    cls = results["class"]
+    xywhn = results["bbox"]
+    conf = results["score"]
+    curr_det = []
+    for i in range(len(cls)):
+        curr_det.append({
+        "class":  class_names['names'][int(cls[i])],
+        "score": float(conf[i]),
+        "bbox": xywhn[i].tolist(),
+        })
+    curr_frame = {"frame_id": 0, "detections": curr_det}
+    
+    print(curr_frame)
 
-        if args.rabbit:
-            command = json.dumps(curr_frame)
-            send_task.interactive_shell(args.output_queue, args.output_host, command, mainLogger)
-        '''
+    if args.rabbit:
+        command = json.dumps(curr_frame)
+        send_task.interactive_shell(args.output_queue, args.output_host, command, mainLogger)
+ 
 except KeyError as e:
     print(f"Такой модели нет, выберите что-то из {models_config.keys()}. Ошибка: {e}")
 

@@ -1,6 +1,9 @@
+import json
 from fastapi import FastAPI, Query, UploadFile
 from uuid import UUID
 import httpx
+from wrappers.yolo_transformer import YOLOTransformerDetector
+from wrappers.yolov11 import YOLODetector
 from models_config import models_config
 from builders.general_builder import GeneralBuilder
 from schemas import CreateRequest, DeleteRequest, DictResponse, Response
@@ -25,7 +28,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Выбор архитектуры модели и создание модели
-created_models = {}
+created_models = {"554d3bd3-b0ef-4025-b95a-3f0e1a127d48": YOLODetector('test_yolo')}
 
 @app.post("/create_model", response_model=Response)
 async def create_model(create_request: CreateRequest):
@@ -96,32 +99,62 @@ async def save_model(input_uuid: UUID = Query(...)):
     created_models[str(input_uuid)].save(settings.model_dir) 
     return Response(message=f"Модель {created_models[str(input_uuid)].model_name} скачана.", uuid=f"{input_uuid}")
 
-# Загрузка модели по имени
+# Загрузка модели c сервера по имени
 @app.post('/load_model', response_model=Response)
-async def load_model(input_uuid: UUID = Query(...)):
-    created_models[str(input_uuid)].save(settings.model_dir) 
-    return Response(message=f"Модель {created_models[str(input_uuid)].model_name} скачана.", uuid=f"{input_uuid}")
+async def load_model(create_request: CreateRequest):
+    if len(created_models) >= settings.max_inference_models:
+        raise HTTPException(status_code=400, detail="Достигнуто максимальное количество загруженных моделей")
+    
+    model_type = create_request.model_type
+    model_name = create_request.model_name
+
+    try:
+        model_builder = GeneralBuilder(model_type, model_name)
+        detector = model_builder.build().load()
+        created_models[detector.uuid] = detector
+    except KeyError:
+         raise HTTPException(status_code=400, detail=f"Нельзя загрузить `{model_type}`, выберите что-то из {list(models_config.keys())}")
+    
+    return Response(message=f"Модель {model_name} загружена.", uuid=f"{detector.uuid}")
 
 
+# Загрузка картинки для предсказания
+@app.post("/upload_image")
+async def upload_image(input_file: UploadFile):
+    async with httpx.AsyncClient() as client:
+        files = {'file': (input_file.filename, input_file.file.read())} 
+        response = await client.post(
+            f"{settings.url}/runner/upload_input_files/",
+            files=files
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"Ошибка:": response.status_code}
+        
 
-
-
-
-
-
-
-
-'''
+# Распаковка картинки для предсказания
+@app.post("/unpack_image")
+async def unpack_image(input_uuid: UUID = Query(...)):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{settings.url}/runner/unpack_input_files/",
+            params={"input_uuid": str(input_uuid)},
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"Ошибка:": response.status_code} 
+        
+# Запуск модели на картинке
 @app.post("/predict", tags=["Detection"])
 async def detect(name: str = Query(...), input_uuid: UUID = Query(...), configdict = Query(...)):
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            f"{base_url}/runner/run/",
+            f"{settings.url}/runner/run/",
                 params={"name": name, "input_uuid": str(input_uuid), "configdict": json.dumps(configdict)},
         )
         if response.status_code == 200:
             return response.json()
         else:
             return {"Ошибка:": response.status_code}
-
-'''

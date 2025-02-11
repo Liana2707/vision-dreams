@@ -11,9 +11,9 @@ from file, command line arguments or environment variables
 
 def environ_get():
     args = pd.Series()
-    args['input_image'] = os.environ.get('INPUT_IMAGE')
-    args['method'] = os.environ.get('METHOD', 'yolo')
-    args['mode'] = os.environ.get('MODE', 'predict')
+    args['input'] = os.environ.get('INPUT')
+    args['model_uuid'] = os.environ.get('MODEL_UUID', '554d3bd3-b0ef-4025-b95a-3f0e1a127d48')
+    #args['mode'] = os.environ.get('MODE', 'predict')
     args['output'] = os.getenv("OUTPUT", '.')
 
     args['rabbit'] = bool(os.environ.get('RABBIT', 'True').lower() in ('true', '1', 't'))
@@ -25,25 +25,23 @@ def environ_get():
 def arg_parser():
     parser = argparse.ArgumentParser(description='Detection module')
     parser.add_argument('-f', '--file', metavar='Config file', type=str,
-                        help='Path to Config file')
-    parser.add_argument('-i', '--input_image', metavar='Input',
-                        type=str,  help='Path to image source')
-    parser.add_argument('-b', '--input_bbox',
-                        metavar='Input_bbox', type=str, help='Path to file with bbox')
-    parser.add_argument('-fb', '--format_bbox', default='yolo', metavar='Format_bbox', type=str,
-                        help='Format bbox', choices=['pascal_voc', 'albumentations', 'coco',  'yolo'])
-    parser.add_argument('-m', '--method', default='yolo', metavar='Method', type=str,
-                        help='One of available tracking algorithms: yolo',
-                        choices=['yolo', 'ssdlite', 'yolos'])
-    parser.add_argument('-md', '--mode', default='train', metavar='Mode', type=str,
-                        help='One of available modes: save, train, predict, eval',
-                        choices=['save', 'train', 'predict', 'eval'])
+                        help='Path to Config file') # для демо
+    parser.add_argument('-i', '--input', metavar='Input',
+                        type=str,  help='Path to image source') # путь к картинке
+    #parser.add_argument('-b', '--input_bbox',
+    #                    metavar='Input_bbox', type=str, help='Path to file with bbox')
+    #parser.add_argument('-fb', '--format_bbox', default='yolo', metavar='Format_bbox', type=str,
+    #                    help='Format bbox', choices=['pascal_voc', 'albumentations', 'coco',  'yolo'])
+    parser.add_argument('-m', '--model', metavar='Model_uuid', type=str)
+    #parser.add_argument('-md', '--mode', default='train', metavar='Mode', type=str,
+    #                    help='One of available modes: save, train, predict, eval',
+    #                    choices=['save', 'train', 'predict', 'eval'])
     
-    parser.add_argument('-o', '--output', default='.', metavar='Output',
-                        type=str, help='Path to output data')
-    parser.add_argument('-sj', '--save_json', action='store_true', help='Save in json format')
-    parser.add_argument('-s', '--save_image', action='store_true', help='Save in image format')
-    parser.add_argument('-v', '--visualization', action='store_true', help='Show visualization')
+    #parser.add_argument('-o', '--output', default='.', metavar='Output',
+    #                    type=str, help='Path to output data')
+    #parser.add_argument('-sj', '--save_json', action='store_true', help='Save in json format')
+    #parser.add_argument('-s', '--save_image', action='store_true', help='Save in image format')
+    #parser.add_argument('-v', '--visualization', action='store_true', help='Show visualization')
     parser.add_argument('-r', '--rabbit', action='store_false', help='Send bbox w RabbitMQ')
     parser.add_argument('-oh', '--output_host', type=str, help='RabbitMQ host')
     parser.add_argument('-oq', '--output_queue', type=str, help='RabbitMQ queue')
