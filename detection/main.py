@@ -18,7 +18,11 @@ mainLogger.info(f'Using parameters: {args}')
 try:
     detector = created_models[args.method]
     mainLogger.info("Detector is started.")
-    results = detector.predict(args.input_image, save=True)
+except KeyError as e:
+        print(f"Такой модели нет, выберите что-то из {models_config.keys()}. Ошибка: {e}")
+
+if args.model_mode == 'predict':
+    results = detector.predict(args.input, save=True)
     mainLogger.info("results =", results)
     
     with open('models/coco.yaml') as fh:
@@ -41,9 +45,10 @@ try:
     if args.rabbit:
         command = json.dumps(curr_frame)
         send_task.interactive_shell(args.output_queue, args.output_host, command, mainLogger)
- 
-except KeyError as e:
-    print(f"Такой модели нет, выберите что-то из {models_config.keys()}. Ошибка: {e}")
+    
+elif args.model_mode == 'train':
+    results = detector.train(args.input)
+    mainLogger.info("results =", results)
 
 mainLogger.info('Detection finished successfully')
 

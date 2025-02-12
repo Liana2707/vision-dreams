@@ -21,7 +21,7 @@ class YOLODetector(BaseDetector):
 
 
     def train(self, data_path, epochs=10):
-        pass
+        return self.model.train(data=data_path, epochs=epochs, project="models", name=self.model_name)
 
     def evaluate(self, data_path):
         pass

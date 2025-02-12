@@ -147,8 +147,21 @@ async def unpack_image(input_uuid: UUID = Query(...)):
             return {"Ошибка:": response.status_code} 
         
 # Запуск модели на картинке
-@app.post("/predict", tags=["Detection"])
+@app.post("/predict")
 async def detect(name: str = Query(...), input_uuid: UUID = Query(...), configdict = Query(...)):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{settings.url}/runner/run/",
+                params={"name": name, "input_uuid": str(input_uuid), "configdict": json.dumps(configdict)},
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"Ошибка:": response.status_code}
+        
+# Запуск обучения 
+@app.post("/train")
+async def train(name: str = Query(...), input_uuid: UUID = Query(...), configdict = Query(...)):
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"{settings.url}/runner/run/",
