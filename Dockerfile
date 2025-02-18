@@ -1,27 +1,19 @@
 # first stage
-FROM python:3.12 AS builder
+#FROM python:3.12 AS builder
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9
 
-COPY ./detection_test/requirements.txt .
+COPY ./detection /detection
 
-# install dependencies to the local user directory (eg. /root/.local)
-RUN pip install --user --no-cache-dir -r requirements.txt
+#COPY ./detection/requirements.txt ./detection/requirements.txt
 
-# second stage
-FROM python:3.12-slim
+RUN pip install --no-cache-dir -r /detection/requirements.txt
 
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+#RUN pip install -q git+https://github.com/huggingface/transformers.git
 
+#RUN pip install "fastapi[standart]"
 
-# copy only the dependencies that are needed for our application and the source files
-COPY --from=builder /root/.local /root/.local
+WORKDIR /detection
 
-COPY ./detection_test /detection_test
+#CMD ["fastapi", "run", "server.py", "--port", "80"]
 
-WORKDIR /detection_test
-
-
-# update PATH
-ENV PATH=/root/.local:$PATH
-
-# make sure you include the -u flag to have our stdout logged
-CMD [ "python3", "-u", "./main.py" ]
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "80"]

@@ -9,3 +9,6 @@ opencv-python
 PyYAML
 pillow
 pydantic-settings
+fastapi
+pydantic
+uvicorn
