@@ -1,7 +1,7 @@
 import os
 
-import torch
 from ultralytics import YOLO
+import PIL.Image as Image
 from .base_detector import BaseDetector
 
 class YOLODetector(BaseDetector):
@@ -28,7 +28,7 @@ class YOLODetector(BaseDetector):
 
     def predict(self, image_path, **params):
         results = self.model(image_path, **params)
-        classes = [result.boxes.cls for result in results] 
+        '''classes = [result.boxes.cls for result in results] 
         scores = [result.boxes.conf for result in results] 
         bboxes = [result.boxes.xywhn for result in results] 
 
@@ -41,6 +41,11 @@ class YOLODetector(BaseDetector):
             "score": scores,
             "bbox": bboxes,
         }
+        '''
+        for r in results:
+            im_array = r.plot()
+            im = Image.fromarray(im_array[..., ::-1])
+        return im
     
     
     def save(self, dir):

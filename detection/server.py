@@ -1,7 +1,11 @@
+import io
 import json
-from fastapi import FastAPI, Query, UploadFile
+from fastapi import FastAPI, File, Query, UploadFile
 from uuid import UUID
+from fastapi.responses import StreamingResponse
 import httpx
+import yaml
+from wrappers.ssdlite import SSDLiteDetector
 from wrappers.yolo_transformer import YOLOTransformerDetector
 from wrappers.yolov11 import YOLODetector
 from models_config import models_config
@@ -12,7 +16,8 @@ import asyncio
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import asynccontextmanager
-
+import gradio as gr
+import PIL.Image as Image
 from server_config import Settings
 
 app = FastAPI()
@@ -28,7 +33,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Выбор архитектуры модели и создание модели
-created_models = {"554d3bd3-b0ef-4025-b95a-3f0e1a127d48": YOLODetector('test_yolo')}
+created_models = {"554d3bd3-b0ef-4025-b95a-3f0e1a127d48": SSDLiteDetector('ssdlite'),
+                  "554d3bd3-b0ef-4025-b95a-3f0e1a127d49": YOLODetector('yolo'),
+                  "554d3bd3-b0ef-4025-b95a-3f0e1a127d43": YOLOTransformerDetector('transformer')}
 
 @app.post("/create_model", response_model=Response)
 async def create_model(create_request: CreateRequest):
@@ -147,17 +154,30 @@ async def unpack_image(input_uuid: UUID = Query(...)):
             return {"Ошибка:": response.status_code} 
         
 # Запуск модели на картинке
-@app.post("/predict")
-async def detect(name: str = Query(...), input_uuid: UUID = Query(...), configdict = Query(...)):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{settings.url}/runner/run/",
-                params={"name": name, "input_uuid": str(input_uuid), "configdict": json.dumps(configdict)},
-        )
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"Ошибка:": response.status_code}
+@app.post("/detect")
+async def detect(img: UploadFile = File(...), input_uuid: UUID = Query(...), conf_threshold=0.7, iou_threshold=0.5):
+    try:
+        detector = created_models[str(input_uuid)]
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Eror: {e}")
+    
+    try:
+        contents = await img.read()
+        image = Image.open(io.BytesIO(contents))
+        return image
+    except Exception as e:
+        print(f"Не удалось сконвертировать картинку в PIL: {e}")
+    
+    results = detector.predict(
+        image_path=img,
+        conf=conf_threshold,
+        iou=iou_threshold,
+        show_labels=True,
+        show_conf=True,
+        imgsz=640)
+
+    return results
+
         
 # Запуск обучения 
 @app.post("/train")
@@ -171,3 +191,18 @@ async def train(name: str = Query(...), input_uuid: UUID = Query(...), configdic
             return response.json()
         else:
             return {"Ошибка:": response.status_code}
+
+predict_iface = gr.Interface(
+    fn=detect,
+    inputs=[
+        gr.Image(type="pil", label="Upload Image"),
+        'text',
+        gr.Slider(minimum=0, maximum=1, value=0.25, label="Confidence threshold"),
+        gr.Slider(minimum=0, maximum=1, value=0.45, label="IoU threshold"),
+    ],
+    outputs=gr.Image(type="pil", label="Result"),
+    title="Predict",
+    description="Upload images for inference.",
+)       
+
+app = gr.mount_gradio_app(app, predict_iface, path="/detect")
