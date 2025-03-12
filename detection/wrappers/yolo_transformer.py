@@ -8,6 +8,8 @@ from PIL import Image
 import PIL.Image as Image
 import io
 
+from schemas.output_detect_schema import TLBR, XYWHN, ModelDescription, OutputItem, RootModel
+
 from .base_detector import BaseDetector
 
 class YOLOTransformerDetector(BaseDetector):
@@ -26,8 +28,7 @@ class YOLOTransformerDetector(BaseDetector):
     def evaluate(self, data_path):
         pass
 
-    def predict(self, image_path, **params):
-        image = image_path
+    def predict(self, image, **params):
         pixel_values = self.feature_extractor(image, return_tensors="pt").pixel_values
 
         with torch.no_grad():
@@ -45,11 +46,38 @@ class YOLOTransformerDetector(BaseDetector):
 
         boxes_xywh = self.xyxy_to_xywh(boxes)
         boxes_xywhn = self.normalize_boxes(boxes_xywh, image.size)
+        boxes_tlbr = boxes
+        output_items = []
+        for i in range(len(boxes)):
+            class_id = int(labels[i])
+            class_name = self.model.config.id2label[class_id]
+            score = float(scores[i])
+            xywhn = XYWHN(
+                xn=float(boxes_xywhn[i, 0]),
+                yn=float(boxes_xywhn[i, 1]),
+                wn=float(boxes_xywhn[i, 2]),
+                hn=float(boxes_xywhn[i, 3]),
+            )
 
-        img_with_boxes = self.plot_results(image, scores, boxes, labels)
-        return img_with_boxes
+            tlbr = TLBR(
+                xmin=float(boxes_tlbr[i, 0]),
+                ymin=float(boxes_tlbr[i, 1]),
+                xmax=float(boxes_tlbr[i, 2]),
+                    ymax=float(boxes_tlbr[i, 3]),
+            )
 
-    def plot_results(self, pil_img: Image.Image, prob, boxes, classes):
+            output_item = OutputItem(
+                class_id=class_id, class_name=class_name, score=score, xywhn=xywhn, tlbr=tlbr
+            )
+            output_items.append(output_item)
+
+        model_description = ModelDescription(
+            id=str(self.uuid), name=self.model_name, type=self.model_type, problem_type="detection"
+        )
+
+        return RootModel(model_description=model_description, model_output=[output_items])
+
+    def plot_image(self, pil_img: Image.Image, prob, boxes, classes):
         plt.figure(figsize=(16,10))
         plt.imshow(pil_img)
         ax = plt.gca()
@@ -63,7 +91,7 @@ class YOLOTransformerDetector(BaseDetector):
 
         # Convert the matplotlib plot to a PIL Image
         buf = io.BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
+        plt.savefig(buf, format="numpy", bbox_inches="tight")
         plt.close()
         buf.seek(0)
 

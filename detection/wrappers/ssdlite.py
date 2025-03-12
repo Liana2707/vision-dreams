@@ -7,6 +7,8 @@ import torch
 import PIL.Image as Image
 from torchvision.models.detection import ssdlite320_mobilenet_v3_large
 from torchvision.models.detection import SSDLite320_MobileNet_V3_Large_Weights
+
+from schemas.output_detect_schema import TLBR, XYWHN, ModelDescription, OutputItem, RootModel
 from .base_detector import BaseDetector
 
 class SSDLiteDetector(BaseDetector):
@@ -25,24 +27,20 @@ class SSDLiteDetector(BaseDetector):
     def evaluate(self):
         pass
 
-    def predict(self, image_path, **params):
+    def predict(self, image, **params):
         self.model.eval()
 
         target_size=(300, 300)
-        original_image = image_path
-        original_image = np.array(original_image) 
+        original_image = np.array(image) 
+        img_height, img_width = original_image.shape[0], original_image.shape[1]
         image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, target_size, interpolation=cv2.INTER_CUBIC)
         image = torch.from_numpy(image.astype(np.float32)).permute(2, 0, 1) / 255.0
-        conf = params['conf']
-    
-        results = self.process_images(image, conf)
-        img_with_boxes = self.plot_results(original_image, results['score'], results['bbox'], results['class'])
-        return img_with_boxes         
 
-    def process_images(self, img, conf):
+        conf = params['conf']
+
         preprocess = self.weights.transforms()
-        batch = preprocess(img).unsqueeze(0)
+        batch = preprocess(image).unsqueeze(0)
         with torch.no_grad():
             output = self.model(batch)
         
@@ -55,17 +53,48 @@ class SSDLiteDetector(BaseDetector):
         filtered_labels = labels[filtered_indices]
         filtered_boxes = boxes[filtered_indices]
 
-        img_height, img_width = img.shape[1], img.shape[2]
-        filtered_boxes_normalized = filtered_boxes / torch.tensor([img_width, img_height, img_width, img_height])
+        scale_x = img_width / target_size[0]
+        scale_y = img_height / target_size[1]
+        filtered_boxes_scaled = filtered_boxes * torch.tensor([scale_x, scale_y, scale_x, scale_y])
 
-        results = {
-            "class": filtered_labels,
-            "score": filtered_scores,
-            "bbox": filtered_boxes_normalized 
-        }
-        return results
+        filtered_boxes_normalized = filtered_boxes / torch.tensor([target_size[0], target_size[1], target_size[0], target_size[1]])
 
-    def plot_results(self, image_np, scores, boxes, labels):
+        output_items = []
+        for i in range(len(filtered_scores)):
+            class_id = int(filtered_labels[i])  
+            score = float(filtered_scores[i])  
+
+            xmin_norm = float(filtered_boxes_normalized[i][0])
+            ymin_norm = float(filtered_boxes_normalized[i][1])
+            xmax_norm = float(filtered_boxes_normalized[i][2])
+            ymax_norm = float(filtered_boxes_normalized[i][3])
+
+            widthn = xmax_norm - xmin_norm
+            heightn = ymax_norm - ymin_norm
+            xcn = xmin_norm + widthn / 2  # Центр x
+            ycn = ymin_norm + heightn / 2  # Центр y
+
+            xywhn = XYWHN(xn=xcn, yn=ycn, wn=widthn, hn=heightn)
+
+            tlbr = TLBR(xmin=float(filtered_boxes_scaled[i][0]), ymin=float(filtered_boxes_scaled[i][1]), xmax=float(filtered_boxes_scaled[i][2]), ymax=float(filtered_boxes_scaled[i][3]))
+
+            output_item = OutputItem(
+                class_id=class_id,
+                class_name=self.weights.meta["categories"][class_id],
+                score=score,
+                xywhn=xywhn,
+                tlbr=tlbr,
+            )
+            output_items.append(output_item)
+
+        model_description = ModelDescription(id=str(self.uuid), name=self.model_name,type=self.model_type, problem_type='detection')
+
+        return RootModel(
+            model_description=model_description, 
+            model_output=[output_items]
+        )
+
+    def plot_image(self, image_np, scores, boxes, labels):
         image_np = image_np.copy() 
 
         for i in range(len(scores)):
@@ -83,7 +112,6 @@ class SSDLiteDetector(BaseDetector):
             cv2.putText(image_np, f"{category_name}: {100 * score:.1f}%",
                         (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (255, 255, 255), 2)
-
         pil_image = Image.fromarray(image_np)
         return pil_image
     

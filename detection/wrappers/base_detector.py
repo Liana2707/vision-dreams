@@ -15,7 +15,11 @@ class BaseDetector(ABC):
         pass
     
     @abstractmethod
-    def predict(self, image_path, **params):
+    def predict(self, image, **params):
+        pass
+
+    @abstractmethod
+    def plot_image(self, image, **params):
         pass
 
     @abstractmethod
